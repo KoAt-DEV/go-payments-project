@@ -73,6 +73,48 @@ All configuration is read from environment variables (see `.env.example`). Main 
 
 The code under `internal/config` contains the config definitions and parsing logic.
 
+## Running with Docker
+
+This project includes a `Dockerfile` and `docker-compose.yml` to run the API together with Postgres and Redis for local development.
+
+Quick Docker steps:
+
+```bash
+# build and start api + postgres + redis
+docker-compose up --build
+
+# stop
+docker-compose down
+```
+
+Notes about the compose setup:
+
+- The API container is named `gpp-api` and is built from the repository `Dockerfile`.
+- The compose file maps the API port `3000:3000` by default and uses the `.env` file for configuration. The service healthcheck calls `http://localhost:3000/health`.
+- The `Dockerfile` uses a multi-stage build (golang:1.25-alpine builder → alpine runtime) and copies the `.env` into the image. The final image exposes port `8080` in the Dockerfile, but the application reads the port from the `APP_PORT` / `PORT` environment variable — prefer to set `APP_PORT` to match the port you want to expose (default 3000 in `.env.example`).
+
+## Databases (Postgres & Redis)
+
+The included `docker-compose.yml` defines Postgres and Redis services for local development. Key defaults (see `.env.example` and `docker-compose.yml`):
+
+- Postgres (container name `gpp-postgres`)
+	- Image: `postgres:16`
+	- Default credentials (also shown in `.env.example`):
+		- POSTGRES_USER=gppuser
+		- POSTGRES_PASSWORD=gpppass
+		- POSTGRES_DB=gppdb
+	- Container internal port: `5432`
+	- Host port mapped in the compose file: `5434:5432` (so from the host you can connect to Postgres on port 5434)
+	- The application by default connects to the Postgres host `postgres` on port `5432` (container network). The `.env.example` uses `POSTGRES_HOST=postgres` and `POSTGRES_PORT=5432`.
+
+- Redis (container name `gpp-redis`)
+	- Image: `redis:7`
+	- Default internal port: `6379`
+	- Host port mapping: `6379:6379`
+	- The `.env.example` uses `REDIS_ADDR=redis:6379` so the app connects to `redis` inside the compose network.
+
+If you prefer to run Postgres/Redis locally (not in Docker), update the `.env` values accordingly and ensure the `POSTGRES_HOST` / `REDIS_ADDR` point to reachable host addresses.
+
 ## Project Structure
 
 - `cmd/api` — application entrypoint
@@ -91,7 +133,8 @@ This structure follows Go conventions for internal packages and a single `cmd` b
 - Request logging middleware with slow-request warnings
 - Prometheus-compatible metrics namespace (`gopayments_api`) prepared
 - JWT authentication scaffolding
-- Graceful shutdown
+- Production-grade graceful shutdown with context-aware resource cleanup (Postgres, Redis, Fiber)
+- Zero connection leaks even under Kubernetes rolling updates
 - Health-check endpoint
 
 ## Roadmap

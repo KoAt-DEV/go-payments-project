@@ -1,0 +1,59 @@
+services:
+
+  api:
+    container_name: gpp-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    container_name: gpp-postgres
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gppuser
+      POSTGRES_PASSWORD: gpppass
+      POSTGRES_DB: gppdb
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/postgresql_data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "gppuser", "-d", "gppdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    container_name: gpp-redis
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
