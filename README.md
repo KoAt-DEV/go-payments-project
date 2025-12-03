@@ -13,6 +13,10 @@ A modern, production-oriented payment processing backend written in Go. This pro
 - Zerolog (fast structured logging)
 - caarlos0/env (zero-boiler config from env vars)
 - godotenv (.env file support)
+- PostgreSQL (pgx v5; development image: `postgres:16`)
+- Redis (go-redis v9; development image: `redis:7`)
+- Docker & Docker Compose (multi-stage `Dockerfile`, `docker-compose.yml` for local dev)
+
 
 ## Contents
 
