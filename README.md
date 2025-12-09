@@ -3,6 +3,7 @@
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go)](https://go.dev)
 [![Fiber](https://img.shields.io/badge/Fiber-v3-00ADD8?logo=go)](https://gofiber.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rate Limiting](https://img.shields.io/badge/Rate_Limiting-GCRA_%2B_Redis-brightgreen)](internal/middleware/ratelimit.go)
 
 A modern, production-oriented payment processing backend written in Go. This project is a portfolio/example app built with best practices in mind.
 
@@ -128,31 +129,40 @@ If you prefer to run Postgres/Redis locally (not in Docker), update the `.env` v
 
 This structure follows Go conventions for internal packages and a single `cmd` binary.
 
-## Features
+## Features (Implemented)
 
-- Layered, extendable architecture
-- Environment-based configuration with `.env` support
-- Structured logging via Zerolog (pretty console in dev, JSON in prod)
-- Unique request IDs per request
-- Request logging middleware with slow-request warnings
-- Prometheus-compatible metrics namespace (`gopayments_api`) prepared
-- JWT authentication scaffolding
-- Production-grade graceful shutdown with context-aware resource cleanup (Postgres, Redis, Fiber)
-- Zero connection leaks even under Kubernetes rolling updates
-- Health-check endpoint
+- ✅ Layered, extendable architecture
+- ✅ Environment-based configuration with `.env` support
+- ✅ Structured logging via Zerolog (pretty console in dev, JSON in prod)
+- ✅ Unique request IDs per request (middleware)
+- ✅ Request logging middleware with slow-request warnings
+- ✅ **Rate limiting** (Redis-backed GCRA algorithm, middleware)
+- ✅ Production-grade graceful shutdown with context-aware resource cleanup (Postgres, Redis, Fiber)
+- ✅ Zero connection leaks even under rolling updates
+- ✅ Health-check endpoint (`GET /health`)
+- ✅ Database connectivity checks (`GET /ping-db`, `GET /ping-redis`)
+- ✅ Postgres connection pooling (pgx v5, configurable max/min connections)
+- ✅ Redis connection pool (go-redis v9, configurable)
+- ✅ Docker + docker-compose for local development
+- ✅ JWT authentication config ready (Secret, Access/Refresh token lifetimes)
+- ✅ Prometheus-compatible metrics namespace (`gopayments_api`) configured
+
+## Endpoints
+
+- `GET /health` — service health check (returns status, environment, version, timestamp)
+- `GET /ping-db` — test Postgres connectivity
+- `GET /ping-redis` — test Redis connectivity
 
 ## Roadmap
 
-- User registration & login (JWT)
+- User registration & login (JWT implementation using JWT config)
 - Refresh token rotation
-- Role-based access control
+- Role-based access control (middleware)
 - Payment processing endpoints (Stripe/PayPal/webhooks)
-- Rate limiting
-- Prometheus metrics endpoint
 - OpenAPI/Swagger documentation
-- Docker + docker-compose
 - CI/CD via GitHub Actions
-- Unit & integration tests
+- Comprehensive unit & integration tests
+- Database migrations (SQL or Go-based)
 
 ## License
 
