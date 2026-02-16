@@ -8,9 +8,12 @@ import (
 	"syscall"
 	"time"
 
+	"go-payments-portfolio-project/internal/bootstrap"
 	"go-payments-portfolio-project/internal/config"
 	"go-payments-portfolio-project/internal/database"
+	"go-payments-portfolio-project/internal/domain/user/adapter"
 	"go-payments-portfolio-project/internal/logger"
+	"go-payments-portfolio-project/internal/router"
 	"go-payments-portfolio-project/internal/server"
 )
 
@@ -19,6 +22,8 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("failed to load config: %w", err))
 	}
+
+	validate := bootstrap.InitValidator()
 
 	log := logger.New(logger.Options{
 		Environment: cfg.App.Env,
@@ -32,12 +37,25 @@ func main() {
 		log.Fatal().Msg("Failed to connect to Postgres")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := database.RunMigrations(ctx, pgPool, cfg, log); err != nil {
+		log.Fatal().Err(err).Msg("Automatic migrations failed - cannot start application")
+	}
+
 	redisClient, err := database.NewRedis(cfg, log)
 	if err != nil {
 		log.Fatal().Msg("Failed to connect to redis")
 	}
 
 	srv := server.New(cfg, log, pgPool, redisClient)
+
+	userRepo := adapter.NewPostgresRepository(pgPool)
+	userService := adapter.NewService(userRepo, cfg, log)
+	userHandler := adapter.NewHandler(userService, log, validate)
+
+	router.SetupRoutes(srv.App(), userHandler, srv.Limiter(), log)
 
 	log.Info().Int("port", cfg.App.Port).Msg("Starting Fiber server...")
 
@@ -59,9 +77,6 @@ func main() {
 	case sig := <-quit:
 		log.Info().Str("signal", sig.String()).Msg("Shutdown signal received...")
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Msg("HTTP server forced shutdown")

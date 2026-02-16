@@ -8,6 +8,8 @@ import (
 )
 
 type Config struct {
+	AutoMigrate bool `env:"AUTO_MIGRATE" envDefault:"false"`
+
 	App struct {
 		Port int    `env:"PORT" envDefault:"3000"`
 		Env  string `env:"ENV" envDefault:"development"`

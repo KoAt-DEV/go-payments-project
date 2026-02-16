@@ -5,7 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rate Limiting](https://img.shields.io/badge/Rate_Limiting-GCRA_%2B_Redis-brightgreen)](internal/middleware/ratelimit.go)
 
-A modern, production-oriented payment processing backend written in Go. This project is a portfolio/example app built with best practices in mind.
+A clean, production-ready payment backend example in Go.
+Built with clean architecture, observability, security, and real-world practices in mind.
+Portfolio project showcasing layered design, rate limiting, metrics, and more.
+
+
 
 ## Tech Stack
 
@@ -23,17 +27,23 @@ A modern, production-oriented payment processing backend written in Go. This pro
 
 - [Overview](#overview)
 - [Quick Start](#quick-start)
-- [Requirements](#requirements)
-- [Running Locally](#running-locally)
 - [Configuration](#configuration)
+- [Running with Docker](#running-with-docker)
+- [Databases](#databases-postgres--redis)
 - [Project Structure](#project-structure)
 - [Features](#features)
+- [Endpoint](#endpoints)
 - [Roadmap](#roadmap)
 - [License](#license)
 
 ## Overview
 
-This repository demonstrates a clean, layered Go backend using Fiber, structured logging, environment-driven configuration, and middleware for request tracing and logging.
+This project demonstrates a clean, layered Go backend with:
+- Hexagonal/clean architecture principles (domain-first, ports & adapters)
+- Redis-backed rate limiting (GCRA) on auth endpoints
+- Embedded DB migrations (go:embed + goose)
+- JWT-based authentication scaffolding
+- Prometheus metrics collection (health + register flow)
 
 ## Quick Start
 
@@ -59,13 +69,6 @@ go build -o bin/gopayments ./cmd/api
 
 By default the server listens on the port specified in `PORT` (e.g. 3000). Check `GET /health` after startup.
 
-## Requirements
-
-- Go 1.23 or newer
-- (Optional) PostgreSQL and Redis if you want the full stack locally
-
-Run `go mod tidy` to fetch dependencies.
-
 ## Configuration
 
 All configuration is read from environment variables (see `.env.example`). Main groups:
@@ -75,6 +78,7 @@ All configuration is read from environment variables (see `.env.example`). Main 
 - `REDIS_*` — cache/session store
 - `JWT_*` — authentication keys and durations
 - `METRICS_*` — Prometheus/metrics settings
+- `AUTO_MIGRATE` — run embedded migrations on startup (false by default)
 
 The code under `internal/config` contains the config definitions and parsing logic.
 
@@ -126,43 +130,50 @@ If you prefer to run Postgres/Redis locally (not in Docker), update the `.env` v
 - `internal/config` — configuration management
 - `internal/logger` — logging setup (Zerolog wrapper)
 - `internal/middleware` — request ID, request logger, etc.
+- `internal/database` — pgxpool and redis wrapper, goose migrations
+- `internal/domain/user` — user domain (entity, repository, service, handler)
+- `internal/metrics` — Prometheus metrics
+- `internal/limiter` — Redis backed GCRA rate limiter
+- `internal/server` — Fiber server setup
+- `internal/utils` — JWT helper
+- `internal/router` — Router file
 
 This structure follows Go conventions for internal packages and a single `cmd` binary.
 
 ## Features (Implemented)
 
-- ✅ Layered, extendable architecture
-- ✅ Environment-based configuration with `.env` support
-- ✅ Structured logging via Zerolog (pretty console in dev, JSON in prod)
-- ✅ Unique request IDs per request (middleware)
-- ✅ Request logging middleware with slow-request warnings
-- ✅ **Rate limiting** (Redis-backed GCRA algorithm, middleware)
-- ✅ Production-grade graceful shutdown with context-aware resource cleanup (Postgres, Redis, Fiber)
-- ✅ Zero connection leaks even under rolling updates
-- ✅ Health-check endpoint (`GET /health`)
-- ✅ Database connectivity checks (`GET /ping-db`, `GET /ping-redis`)
-- ✅ Postgres connection pooling (pgx v5, configurable max/min connections)
-- ✅ Redis connection pool (go-redis v9, configurable)
-- ✅ Docker + docker-compose for local development
-- ✅ JWT authentication config ready (Secret, Access/Refresh token lifetimes)
-- ✅ Prometheus-compatible metrics namespace (`gopayments_api`) configured
+- Clean layered architecture (cmd / internal separation)
+- Environment-driven config with `.env` support
+- Structured logging with request IDs & slow request detection
+- Redis-backed rate limiting (GCRA) **only on auth endpoints**
+- Embedded migrations (go:embed + goose) for self-contained binary
+- Prometheus metrics (register success/fail, latency, bcrypt/db timing)
+- Health & readiness checks (`/health`, `/ping-db`, `/ping-redis`)
+- Graceful shutdown with Postgres & Redis cleanup
 
 ## Endpoints
 
 - `GET /health` — service health check (returns status, environment, version, timestamp)
 - `GET /ping-db` — test Postgres connectivity
 - `GET /ping-redis` — test Redis connectivity
+- `POST /api/v1/auth/register` - create user account
 
 ## Roadmap
 
-- User registration & login (JWT implementation using JWT config)
-- Refresh token rotation
-- Role-based access control (middleware)
-- Payment processing endpoints (Stripe/PayPal/webhooks)
-- OpenAPI/Swagger documentation
-- CI/CD via GitHub Actions
-- Comprehensive unit & integration tests
-- Database migrations (SQL or Go-based)
+**Done & working:**
+- User registration (rate limited, password hashing, JWT tokens)
+- Redis rate limiting on auth endpoints
+- Prometheus metrics collection
+- Embedded migrations to Postgres
+- Health/readiness endpoints
+- Docker multi-stage build + compose
+
+**Planned / next steps:**
+- Login & refresh token endpoints
+- JWT middleware for protected routes
+- OpenAPI / Swagger docs
+- Unit & integration tests
+- GitLab CI/CD pipeline
 
 ## License
 

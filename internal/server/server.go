@@ -8,9 +8,13 @@ import (
 	"go-payments-portfolio-project/internal/config"
 	"go-payments-portfolio-project/internal/database"
 	ratelimit "go-payments-portfolio-project/internal/limiter"
+	"go-payments-portfolio-project/internal/metrics"
 	"go-payments-portfolio-project/internal/middleware"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
 
@@ -19,6 +23,14 @@ type Server struct {
 	cfg     *config.Config
 	log     *zerolog.Logger
 	limiter *ratelimit.RateLimiter
+}
+
+func (s *Server) Limiter() *ratelimit.RateLimiter {
+	return s.limiter
+}
+
+func (s *Server) App() *fiber.App {
+	return s.app
 }
 
 func New(cfg *config.Config, log *zerolog.Logger, pgPool *database.PgPool, redisClient *database.RedisClient) *Server {
@@ -39,15 +51,8 @@ func New(cfg *config.Config, log *zerolog.Logger, pgPool *database.PgPool, redis
 		SlowRequest: 500 * time.Millisecond,
 	}))
 
-	rateLimiterLogger := log.With().Str("component", "rate_limiter").Logger()
-	app.Use(middleware.NewRateLimiterMiddleware(middleware.RateLimiterConfig{
-		Limiter: rateLimiter,
-		Burst:   100,
-		Rate:    20.0,
-		Logger:  &rateLimiterLogger,
-	}))
-
 	app.Get("/health", func(c fiber.Ctx) error {
+		metrics.TotalHealthcheck.Inc()
 		return c.JSON(fiber.Map{
 			"status":    "ok",
 			"service":   "go-payments-api",
@@ -92,6 +97,11 @@ func New(cfg *config.Config, log *zerolog.Logger, pgPool *database.PgPool, redis
 			"message": "Redis reachable",
 		})
 	})
+
+	app.Get("/metrics", adaptor.HTTPHandler(promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{Registry: prometheus.DefaultRegisterer.(*prometheus.Registry)},
+	)))
 
 	return &Server{
 		app:     app,
