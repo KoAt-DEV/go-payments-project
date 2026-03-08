@@ -53,13 +53,13 @@ func (h *Handler) Register(c fiber.Ctx) error {
 				"error": "email already in use",
 			})
 		case errors.Is(err, ErrPasswordHashingFailed):
-			return c.Status(fiber.StatusInternalServerError).JSON((fiber.Map{
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "error with password generation",
-			}))
+			})
 		case errors.Is(err, ErrTokenGenerationFailed):
-			return c.Status(fiber.StatusInternalServerError).JSON((fiber.Map{
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "error with token generation",
-			}))
+			})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "internal server error",
